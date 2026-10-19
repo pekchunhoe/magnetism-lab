@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-export function useSimulationClock(playing:boolean,slow:boolean,resetVersion=0,stepVersion=0,publishFrames=true) {
-  const [time,setTime]=useState(0), previous=useRef<number|undefined>(undefined);
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+export function useSimulationClock(playing:boolean,slow:boolean,resetVersion:number|string=0,stepVersion=0,publishFrames=true) {
+  const [time,setTime]=useState(0), previous=useRef<number|undefined>(undefined),epoch=useRef(resetVersion);
   const clock=useRef({time:0});
   const publish=useRef(publishFrames);publish.current=publishFrames;
-  useEffect(()=>{clock.current.time=0;setTime(0);},[resetVersion]);
+  const resetting=epoch.current!==resetVersion;
+  useLayoutEffect(()=>{epoch.current=resetVersion;clock.current.time=0;previous.current=undefined;setTime(0);},[resetVersion]);
   useEffect(()=>{if(stepVersion>0){clock.current.time+=.08;setTime(clock.current.time);}},[stepVersion]);
   useEffect(()=>{setTime(clock.current.time);},[publishFrames]);
   useEffect(()=>{
@@ -13,5 +14,5 @@ export function useSimulationClock(playing:boolean,slow:boolean,resetVersion=0,s
     id=requestAnimationFrame(tick);
     return ()=>{cancelAnimationFrame(id);previous.current=undefined;};
   },[playing,slow]);
-  return {time,clock,resetTime:()=>{clock.current.time=0;setTime(0);},step:()=>{clock.current.time+=.08;setTime(clock.current.time);}};
+  return {time:resetting?0:time,clock,resetTime:()=>{clock.current.time=0;setTime(0);},step:()=>{clock.current.time+=.08;setTime(clock.current.time);}};
 }

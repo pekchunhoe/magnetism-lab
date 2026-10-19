@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import type { Params, TabId, Vec, ViewOptions } from '../../../types/magnetism';
 import { add, magnitude, motorForce, rad, scale, sine, cosine, sourceField, vec, wireField, wireForce } from '../../../lib/physics/magnetism/core';
 import { circularLine, helixWinding, spatialFieldLines, staticVectors, tuple } from '../../../lib/physics/magnetism/visualization';
+import { SELECTOR } from '../../../lib/physics/magnetism/trajectories';
 import { ArrowLattice, C, Cable, FieldStreams, Label, Tube, useWorld, VectorArrow } from './Primitives';
 import { Draggable, ProbeBall, type DragPlane } from './Draggable';
 
@@ -44,13 +45,14 @@ export function Apparatus({tab,p,view,plane,onChange}:{tab:TabId;p:Params;view:V
 }
 
 export function SelectorEquipment({p,path}:{p:Params;path:Vec[]}) {
-  const end=path.at(-1)!,w=useWorld(),e=w.extent;
+  const end=path.at(-1)!,w=useWorld(),e=w.extent,maxX=path.reduce((a,v)=>Math.max(a,v.x),.3),halfY=path.reduce((a,v)=>Math.max(a,Math.abs(v.y)),.125);
+  const centreX=(SELECTOR.entrance+SELECTOR.exit)/2,plateY=SELECTOR.halfHeight+.007,apertureY=(SELECTOR.halfHeight+SELECTOR.slitHalfHeight)/2,apertureHeight=SELECTOR.halfHeight-SELECTOR.slitHalfHeight;
   return <><Cable a={vec(-.39,0)} b={vec(-.3,0)} r={.018} color={C.steel}/><Label at={vec(-.35,.045)}>Source</Label>
-    <Pole at={vec(-.13,.126)} size={[.3,.014,.13]} color={C.blue} label="−"/><Pole at={vec(-.13,-.126)} size={[.3,.014,.13]} color={C.gold} label="+"/>
-    <mesh position={[-.13,0,0]}><boxGeometry args={[.3,.23,.13]}/><meshBasicMaterial color={C.blue} transparent opacity={.035} depthWrite={false} side={THREE.DoubleSide}/></mesh>
-    {[-.28,.04].flatMap(x=>[-1,1].map(s=><Pole key={`${x}-${s}`} at={vec(x,s*.065,0)} size={[.009,.102,.15]} color={C.steel} label=""/>))}
+    <Pole at={vec(centreX,plateY)} size={[SELECTOR.exit-SELECTOR.entrance,.014,.13]} color={C.blue} label="−"/><Pole at={vec(centreX,-plateY)} size={[SELECTOR.exit-SELECTOR.entrance,.014,.13]} color={C.gold} label="+"/>
+    <mesh position={[centreX,0,0]}><boxGeometry args={[SELECTOR.exit-SELECTOR.entrance,SELECTOR.halfHeight*2,.13]}/><meshBasicMaterial color={C.blue} transparent opacity={.035} depthWrite={false} side={THREE.DoubleSide}/></mesh>
+    {[SELECTOR.entrance,SELECTOR.slitX].flatMap(x=>[-1,1].map(s=><Pole key={`${x}-${s}`} at={vec(x,s*apertureY,0)} size={[.009,apertureHeight,.15]} color={C.steel} label=""/>))}
     <Label at={vec(-.13,.17)}>Crossed fields</Label><Label at={vec(.04,.15)}>Exit slit</Label>
-    {p.analyser&&<><mesh position={[.16,-Math.min(e*.3,.13),-.055]}><boxGeometry args={[Math.max(.25,e*.6),Math.max(.25,e*.55),.016]}/><meshStandardMaterial color="#172d43" metalness={.5} roughness={.3}/></mesh><Label at={vec(.19,.12)}>Magnetic analyser · E = 0</Label></>}
+    {p.analyser&&<><mesh position={[(SELECTOR.slitX+maxX)/2,0,-.075]}><boxGeometry args={[maxX-SELECTOR.slitX,halfY*2+.04,.016]}/><meshStandardMaterial color="#172d43" metalness={.5} roughness={.3}/></mesh><Label at={vec(.19,.12)}>Magnetic analyser · E = 0</Label></>}
     <mesh position={tuple(end)}><sphereGeometry args={[e*.025,16,12]}/><meshStandardMaterial color={C.mint} emissive={C.mint} emissiveIntensity={.6}/></mesh><Label at={add(end,vec(0,-e*.07))}>Detector / impact</Label>
   </>;
 }

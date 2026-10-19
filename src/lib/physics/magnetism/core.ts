@@ -71,10 +71,17 @@ export function particlePosition(p: Params,t: number): Vec {
   return vec(vp*Math.sin(w*t)/w,vp*(Math.cos(w*t)-1)/w,vz*t);
 }
 export function selectorPosition(p: Params,t: number): Vec {
-  const w=p.charge*p.field/p.mass;
-  if(Math.abs(w)<1e-12) return vec(p.speed*t,p.charge*p.electric*t*t/(2*p.mass),0);
-  const drift=p.electric/p.field,dv=p.speed-drift;
-  return vec(drift*t+dv*Math.sin(w*t)/w,dv*(Math.cos(w*t)-1)/w,0);
+  return selectorState(p,t).position;
+}
+/** Exact Lorentz solution in SI: v(0) = (speed,0,0), E = +y, B = +z.
+ * Stable near B=0 and E=vB; no frame-sized numerical integration steps. */
+export function selectorState(p: Params,t: number) {
+  const w=p.charge*p.field/p.mass,a=p.charge*(p.electric-p.speed*p.field)/p.mass,u=w*t;
+  if(a===0)return {position:vec(p.speed*t),velocity:vec(p.speed)};
+  const sinc=Math.abs(u)<1e-4?1-u*u/6+u**4/120:Math.sin(u)/u;
+  const cosc=Math.abs(u)<1e-4?.5-u*u/24+u**4/720:2*(Math.sin(u/2)/u)**2;
+  const sincc=Math.abs(u)<1e-3?1/6-u*u/120+u**4/5040:(u-Math.sin(u))/u**3;
+  return {position:vec(p.speed*t+a*w*t**3*sincc,a*t*t*cosc),velocity:vec(p.speed+a*w*t*t*cosc,a*t*sinc)};
 }
 export function format(value: number,unit=''): string {
   if(Number.isNaN(value)) return '—';

@@ -1,6 +1,6 @@
 import type { Params, TabId, Vec } from '../../../types/magnetism';
 import { add, cross, magnitude, motorForce, particlePosition, rad, rotate, scale, selectorPosition, sourceField, unit, vec, wireField } from './core';
-import { particleDuration, particleVelocity, selectorForces, selectorTrajectory, selectorVelocity } from './trajectories';
+import { analyserState, particleDuration, particleVelocity, selectorForces, selectorTrajectory, selectorVelocity, SELECTOR } from './trajectories';
 
 export type Beam = ReturnType<typeof selectorTrajectory>;
 export interface MotionSample { position:Vec; velocity:Vec; force:Vec; electric:Vec; magnetic:Vec; time:number; fraction:number; stage:string }
@@ -13,14 +13,14 @@ export function sampleCharge(p:Params,clock:number):MotionSample {
 }
 export function sampleBeam(p:Params,beam:Beam,clock:number):MotionSample {
   const fraction=((clock*.3)%1+1)%1,time=fraction*beam.duration;
-  const exit=beam.samples[600];
+  const exit=beam.selectorEnd;
   const slit=beam.samples.find(s=>s.stage==='gap');
   let position:Vec,velocity:Vec,stage:string;
-  if(time<=exit.time){position=add(selectorPosition(p,time),vec(-.28,0));velocity=selectorVelocity(p,time);stage='selector';}
+  if(time<=exit.time){position=add(selectorPosition(p,time),vec(SELECTOR.entrance,0));velocity=selectorVelocity(p,time);stage='selector';}
   else if(!slit||time<=slit.time){const dt=time-exit.time;position=add(exit.position,scale(exit.velocity,dt));velocity=exit.velocity;stage='gap';}
   else {
     const dt=time-slit.time,w=p.charge*p.field/p.mass,v=slit.velocity;
-    if(p.analyser&&w!==0){const a=w*dt;position=add(slit.position,vec((v.x*Math.sin(a)+v.y*(1-Math.cos(a)))/w,(v.y*Math.sin(a)+v.x*(Math.cos(a)-1))/w));velocity=vec(v.x*Math.cos(a)+v.y*Math.sin(a),v.y*Math.cos(a)-v.x*Math.sin(a));stage='analyser';}
+    if(p.analyser&&w!==0){({position,velocity}=analyserState(p,slit,dt));stage='analyser';}
     else{position=add(slit.position,scale(v,dt));velocity=v;stage='drift';}
   }
   const f=selectorForces(p,velocity),electric=stage==='selector'?f.electric:vec(),magnetic=stage==='selector'||stage==='analyser'?f.magnetic:vec();
@@ -29,12 +29,18 @@ export function sampleBeam(p:Params,beam:Beam,clock:number):MotionSample {
   const force=stage==='selector'?vec(p.charge*velocity.y*p.field,p.charge*(p.electric-velocity.x*p.field)):stage==='analyser'?magnetic:vec();
   return {position,velocity,force,electric,magnetic,time,fraction,stage};
 }
+/** First point strictly after the current particle; append the exact head here. */
+export function beamTrailIndex(beam:Beam,time:number) {
+  let lo=0,hi=beam.samples.length;
+  while(lo<hi){const mid=(lo+hi)>>>1;if(beam.samples[mid].time<=time)lo=mid+1;else hi=mid;}
+  return lo;
+}
 export function sceneFrame(tab:TabId,p:Params,particlePoints=chargePath(p),beam=selectorTrajectory(p)) {
   let points:Vec[],extent:number,centre=vec();
   if(tab==='charges'||tab==='selector'){
     points=tab==='charges'?particlePoints:[...beam.path,vec(-.4,-.18,-.1),vec(.3,.2,.1)];
-    centre=vec(...(['x','y','z'] as const).map(k=>(Math.min(...points.map(v=>v[k]))+Math.max(...points.map(v=>v[k])))/2) as [number,number,number]);
-    extent=Math.max(tab==='charges'?.005:.32,...points.map(v=>magnitude(add(v,scale(centre,-1)))))*1.12;
+    centre=vec(...(['x','y','z'] as const).map(k=>(points.reduce((a,v)=>Math.min(a,v[k]),Infinity)+points.reduce((a,v)=>Math.max(a,v[k]),-Infinity))/2) as [number,number,number]);
+    extent=points.reduce((a,v)=>Math.max(a,magnitude(add(v,scale(centre,-1)))),tab==='charges'?.005:.32)*1.12;
   }else extent=tab==='fields'?Math.max(.6,p.source==='solenoid'?p.length*.95:0):tab==='wires'?Math.max(.43,1.3*Math.hypot(p.length/2,p.separation/2)):.43;
   return {centre,extent,factor:2.8/extent};
 }
