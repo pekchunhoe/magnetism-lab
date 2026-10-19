@@ -92,7 +92,7 @@ test('zero fields, stationary particles, exact velocity selection and analyser f
   await set(page,'Particle speed',0);const stationary=await page.locator('[data-particle="charge"] circle').last().getAttribute('cx');await page.getByRole('button',{name:'Step simulation forward'}).click();expect(await page.locator('[data-particle="charge"] circle').last().getAttribute('cx')).toBe(stationary);
   await choose(page,'Velocity Selector');expect(await readout(page,'Net entry force · y')).toBe(0);await expect(page.locator('[data-particle="selector"]')).toHaveAttribute('data-beam-passes','true');
   await page.getByRole('combobox',{name:'Particle',exact:true}).selectOption('negative');expect(await readout(page,'Net entry force · y')).toBe(0);await expect(page.locator('[data-particle="selector"]')).toHaveAttribute('data-beam-passes','true');
-  await set(page,'Electric field',0);await expect(page.locator('[data-vector="Fᴇ"]')).toHaveCount(0);expect(await readout(page,'Net entry force · y')).toBeGreaterThan(0);
+  await set(page,'Electric field',0);await expect(page.locator('[data-vector="Fᴇ"]')).toHaveCount(0);expect(await readout(page,'Net entry force · y')).toBeLessThan(0);
   await set(page,'Magnetic field',0);await noInvalidGeometry(page);await expect(page.locator('[data-vector="Fʙ"]')).toHaveCount(0);expect(await readout(page,'Net entry force · y')).toBe(0);
   await page.getByRole('button',{name:'Reset experiment'}).click();await page.getByLabel('Magnetic analyser',{exact:true}).check();
   for(let i=0;i<60;i++){await page.getByRole('button',{name:'Step simulation forward'}).click();if(await page.locator('[data-particle="selector"]').getAttribute('data-stage')==='analyser')break;}

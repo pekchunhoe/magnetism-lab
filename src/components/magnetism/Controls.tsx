@@ -9,7 +9,7 @@ function NumericInput({label,value,min,max,onChange}:{label:string;value:number;
   return <input aria-label={label+' value'} type="number" inputMode="decimal" min={min} max={max} step="any" value={draft}
     onFocus={()=>{editing.current=true;}}
     onChange={e=>{setDraft(e.target.value);const v=e.target.valueAsNumber;if(Number.isFinite(v))onChange(Math.min(max,Math.max(min,v)));}}
-    onBlur={()=>{editing.current=false;const v=draft.trim()===''?value:Number(draft),bounded=Number.isFinite(v)?Math.min(max,Math.max(min,v)):value;setDraft(canonical(bounded));onChange(bounded);}}
+    onBlur={()=>{editing.current=false;const v=draft.trim()===''||draft===canonical(value)?value:Number(draft),bounded=Number.isFinite(v)?Math.min(max,Math.max(min,v)):value;setDraft(canonical(bounded));if(bounded!==value)onChange(bounded);}}
     onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}}/>;
 }
 export function Slider({label,value,min,max,step=1,unit,onChange}:{label:string;value:number;min:number;max:number;step?:number;unit:string;onChange:(v:number)=>void}) {

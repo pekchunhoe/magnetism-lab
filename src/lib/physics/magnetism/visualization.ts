@@ -7,9 +7,11 @@ export interface MotionSample { position:Vec; velocity:Vec; force:Vec; electric:
 export const SELECTOR_FLIGHT_SECONDS=10/3;
 export function selectorResult(beam:Beam) {
   if(beam.termination==='stationary')return 'Particle stationary';
-  if(beam.termination==='plate')return 'Plate collision';
+  if(beam.termination==='plate')return 'Rejected: plate collision';
+  if(beam.termination==='entrance-wall')return 'Rejected: entrance wall collision';
+  if(beam.termination==='missed-slit')return 'Rejected: missed exit aperture';
   if(beam.termination==='entrance')return 'Returned through entrance';
-  if(!beam.passes)return 'Exit slit collision';
+  if(!beam.passes)return 'Rejected: exit slit collision';
   return beam.samples.at(-1)!.stage==='analyser'?'Detected at analyser':'Detected after selector';
 }
 export const tuple=(v:Vec):[number,number,number]=>[v.x,v.y,v.z];
@@ -37,7 +39,7 @@ export function sampleBeam(p:Params,beam:Beam,clock:number):MotionSample {
   const f=selectorForces(p,velocity),electric=stage==='selector'?f.electric:vec(),magnetic=stage==='selector'||stage==='analyser'?f.magnetic:vec();
   // Factor out q before subtraction, just as the entry-force readout does.
   // This avoids a fictitious net arrow from subtracting rounded qE and qvB.
-  const force=stage==='selector'?vec(p.charge*velocity.y*p.field,p.charge*(p.electric-velocity.x*p.field)):stage==='analyser'?magnetic:vec();
+  const force=stage==='selector'?vec(-p.charge*velocity.y*p.field,p.charge*(velocity.x*p.field-p.electric)):stage==='analyser'?magnetic:vec();
   return {position,velocity,force,electric,magnetic,time,fraction,stage,complete};
 }
 /** First point strictly after the current particle; append the exact head here. */

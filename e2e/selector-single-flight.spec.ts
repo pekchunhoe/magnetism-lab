@@ -104,7 +104,7 @@ test('single flights hold collision and return boundaries and preserve genuine c
       for(let i=0;i<15;i++)await page.getByRole('button',{name:'Step simulation forward',exact:true}).click();
       await expect(state(page)).toHaveAttribute('data-complete','true');const end=await read(page);
       await page.getByRole('button',{name:'Step simulation forward',exact:true}).click();expect((await read(page)).position).toBe(end.position);
-      if(scenario==='plate'){expect(Math.abs(JSON.parse(end.position).y)).toBe(.115);await expect(page.getByRole('status')).toHaveText('Plate collision');}
+      if(scenario==='plate'){expect(Math.abs(JSON.parse(end.position).y)).toBe(.115);await expect(page.getByRole('status')).toHaveText('Rejected: plate collision');}
       if(scenario==='return'){expect(JSON.parse(end.position).x).toBe(-.28);await expect(page.getByRole('status')).toHaveText('Returned through entrance');}
     }
   }

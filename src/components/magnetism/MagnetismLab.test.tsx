@@ -45,6 +45,15 @@ describe('complete laboratory',()=>{
       expect(state()).toHaveAttribute('data-time','0');expect(state()).toHaveAttribute('data-trail-count','2');
     }
   });
+  it('blurring the displayed generic-ion mass preserves its full SI precision and paused flight',()=>{
+    render(<MagnetismLab/>);fireEvent.click(screen.getByRole('tab',{name:'Velocity Selector'}));
+    fireEvent.change(screen.getByRole('combobox',{name:'Particle'}),{target:{value:'positive'}});
+    fireEvent.click(screen.getByRole('button',{name:'Step simulation forward'}));
+    const state=()=>document.querySelector('[data-particle="selector"]')!,before=state().getAttribute('data-time');
+    const mass=screen.getByRole('spinbutton',{name:'Particle mass value'});
+    fireEvent.focus(mass);fireEvent.blur(mass);
+    expect(state()).toHaveAttribute('data-time',before);
+  });
   it('offers six working tabs with scenes, graphs, measurements, and challenges',()=>{render(<MagnetismLab/>);const tabs=screen.getAllByRole('tab');expect(tabs).toHaveLength(6);for(const tab of tabs){fireEvent.click(tab);expect(tab).toHaveAttribute('aria-selected','true');expect(screen.getByRole('heading',{name:'Interactive scene'})).toBeInTheDocument();expect(screen.getByRole('heading',{name:'Live graph'})).toBeInTheDocument();expect(screen.getByRole('button',{name:/Check answer/})).toBeInTheDocument();expect(screen.getByRole('button',{name:/Record reading/})).toBeInTheDocument();}});
   it('preserves tab state and resets only the active experiment',()=>{render(<MagnetismLab/>);fireEvent.click(screen.getByRole('tab',{name:'Motor Effect'}));fireEvent.change(screen.getByRole('spinbutton',{name:'Conductor current value'}),{target:{value:'8'}});fireEvent.click(screen.getByRole('tab',{name:'Moving Charges'}));fireEvent.click(screen.getByRole('tab',{name:'Motor Effect'}));expect(screen.getByRole('spinbutton',{name:'Conductor current value'})).toHaveValue(8);fireEvent.click(screen.getByRole('button',{name:'Reset experiment'}));expect(screen.getByRole('spinbutton',{name:'Conductor current value'})).toHaveValue(5);});
   it('switches dimensions, records and clears measurements',()=>{render(<MagnetismLab/>);fireEvent.click(screen.getByRole('button',{name:'2D'}));expect(screen.getByRole('button',{name:'2D'})).toHaveAttribute('aria-pressed','true');fireEvent.click(screen.getByRole('button',{name:'Record reading'}));expect(screen.getByText('1 / 12 readings')).toBeInTheDocument();fireEvent.click(screen.getByRole('button',{name:'Clear measurements'}));expect(screen.getByText('0 / 12 readings')).toBeInTheDocument();});

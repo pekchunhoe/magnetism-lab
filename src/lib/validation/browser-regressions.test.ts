@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaults, ELECTRON_MASS, format, magneticForce, motorForce, particlePosition, period, vec } from '../physics/magnetism/core';
-import { particleDuration, particleVelocity, selectorForces, selectorTrajectory, selectorVelocity } from '../physics/magnetism/trajectories';
+import { ANALYSER_X, particleDuration, particleVelocity, selectorForces, selectorTrajectory, selectorVelocity } from '../physics/magnetism/trajectories';
 import { createChallenge } from '../physics/magnetism/challenges';
 import { graphData, readings } from '../physics/magnetism/graphs';
 describe('browser audit regressions',()=>{
@@ -22,17 +22,17 @@ describe('browser audit regressions',()=>{
   it('undefined measurements display a dash rather than infinity',()=>expect(format(NaN,'µT')).toBe('—'));
   it('selector forces use instantaneous Lorentz components, including transverse motion',()=>{
     const p=defaults('selector'),v=vec(120000,5000),f=selectorForces(p,v);
-    expect(f.electric.y).toBe(p.charge*p.electric);expect(f.magnetic.x).toBe(p.charge*5000*p.field);expect(f.magnetic.y).toBe(-p.charge*120000*p.field);
-    expect(selectorForces({...p,electric:0},v).electric.y).toBe(0);
-    expect(selectorForces({...p,field:0},v).magnetic.x).toBe(0);
+    expect(f.electric.y).toBe(-p.charge*p.electric);expect(f.magnetic.x).toBe(-p.charge*5000*p.field);expect(f.magnetic.y).toBe(p.charge*120000*p.field);
+    expect(Math.abs(selectorForces({...p,electric:0},v).electric.y)).toBe(0);
+    expect(Math.abs(selectorForces({...p,field:0},v).magnetic.x)).toBe(0);
   });
-  it('the undeflected beam reaches the actual slit at x = 0.04 m and keeps exit speed',()=>{
+  it('the undeflected beam reaches the back of the actual slit at x = 0.0445 m and keeps exit speed',()=>{
     const p={...defaults('selector'),analyser:true},beam=selectorTrajectory(p),slit=beam.samples.find(s=>s.stage==='gap')!;
-    expect(beam.passes).toBe(true);expect(slit.position.x).toBeCloseTo(.04,10);expect(slit.position.y).toBe(0);
+    expect(beam.passes).toBe(true);expect(slit.position.x).toBeCloseTo(ANALYSER_X,10);expect(slit.position.y).toBe(0);
     const analyser=beam.samples.filter(s=>s.stage==='analyser');expect(analyser.length).toBe(160);
     for(const sample of analyser)expect(Math.hypot(sample.velocity.x,sample.velocity.y)).toBeCloseTo(p.speed,6);
-    expect(analyser.at(-1)!.position.y).toBeLessThan(0);
-    const reverse=selectorTrajectory({...p,charge:-p.charge});expect(reverse.passes).toBe(true);expect(reverse.samples.at(-1)!.position.y).toBeGreaterThan(0);
+    expect(analyser.at(-1)!.position.y).toBeGreaterThan(0);
+    const reverse=selectorTrajectory({...p,charge:-p.charge});expect(reverse.passes).toBe(true);expect(reverse.samples.at(-1)!.position.y).toBeLessThan(0);
   });
   it('unbalanced analyser entrance retains the actual transverse exit velocity',()=>{
     const p={...defaults('selector'),analyser:true,speed:101000};const beam=selectorTrajectory(p),exit=beam.samples.filter(s=>s.stage==='selector').at(-1)!;

@@ -42,4 +42,12 @@ describe('single-flight clock lifecycle',()=>{
     const {result}=renderHook(()=>useSimulationClock(true,false));frames(301);
     expect(result.current.time).toBeCloseTo(6,12);expect(pending.size).toBe(1);
   });
+  it('caps a large delayed frame and still completes once without wrapping',()=>{
+    const complete=vi.fn(),{result}=renderHook(()=>useSimulationClock(true,false,0,0,true,.12,complete));
+    frames(1);frames(1,5000);expect(result.current.time).toBe(.05);
+    frames(1,5000);expect(result.current.time).toBe(.1);
+    frames(1,5000);expect(result.current.time).toBe(.12);
+    frames(20,5000);expect(result.current.time).toBe(.12);
+    expect(complete).toHaveBeenCalledTimes(1);expect(pending.size).toBe(0);
+  });
 });

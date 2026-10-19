@@ -62,7 +62,7 @@ export const radius = (m: number,v: number,q: number,b: number) => Number.isNaN(
 export const period = (m: number,q: number,b: number) => Math.abs(q*b)>0 ? 2*Math.PI*m/Math.abs(q*b) : Infinity;
 export const motorForce = (p: Params) => -p.fieldSign*p.field*p.current*p.length*sine(p.angle);
 export const wireForce = (p: Params) => MU0*p.current*p.current2/(2*Math.PI*p.separation);
-export const selectorForce = (p: Params) => p.charge*(p.electric-p.speed*p.field);
+export const selectorForce = (p: Params) => p.charge*(p.speed*p.field-p.electric);
 export const selectedSpeed = (p: Params) => p.field>0?p.electric/p.field:p.electric>0?Infinity:NaN;
 export const deflectionAngle = (p: Params) => Math.atan2(coilCentre(p.turns,p.current,p.radius),EARTH_B)*180/Math.PI;
 export function particlePosition(p: Params,t: number): Vec {
@@ -73,15 +73,15 @@ export function particlePosition(p: Params,t: number): Vec {
 export function selectorPosition(p: Params,t: number): Vec {
   return selectorState(p,t).position;
 }
-/** Exact Lorentz solution in SI: v(0) = (speed,0,0), E = +y, B = +z.
+/** Exact Lorentz solution in SI: v(0) = (speed,0,0), E = -y, B = -z.
  * Stable near B=0 and E=vB; no frame-sized numerical integration steps. */
 export function selectorState(p: Params,t: number) {
-  const w=p.charge*p.field/p.mass,a=p.charge*(p.electric-p.speed*p.field)/p.mass,u=w*t;
+  const w=p.charge*p.field/p.mass,a=p.charge*(p.speed*p.field-p.electric)/p.mass,u=w*t;
   if(a===0)return {position:vec(p.speed*t),velocity:vec(p.speed)};
   const sinc=Math.abs(u)<1e-4?1-u*u/6+u**4/120:Math.sin(u)/u;
   const cosc=Math.abs(u)<1e-4?.5-u*u/24+u**4/720:2*(Math.sin(u/2)/u)**2;
   const sincc=Math.abs(u)<1e-3?1/6-u*u/120+u**4/5040:(u-Math.sin(u))/u**3;
-  return {position:vec(p.speed*t+a*w*t**3*sincc,a*t*t*cosc),velocity:vec(p.speed+a*w*t*t*cosc,a*t*sinc)};
+  return {position:vec(p.speed*t-a*w*t**3*sincc,a*t*t*cosc),velocity:vec(p.speed-a*w*t*t*cosc,a*t*sinc)};
 }
 export function format(value: number,unit=''): string {
   if(Number.isNaN(value)) return '—';
