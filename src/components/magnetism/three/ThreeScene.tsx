@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import type { Params, TabId, ViewOptions } from '../../../types/magnetism';
 import { vec } from '../../../lib/physics/magnetism/core';
 import { selectorTrajectory } from '../../../lib/physics/magnetism/trajectories';
-import { chargePath, sampleCharge, sceneFrame, staticVectors, tuple } from '../../../lib/physics/magnetism/visualization';
+import { chargePath, sampleCharge, sceneFrame, SELECTOR_FLIGHT_SECONDS, selectorResult, staticVectors, tuple } from '../../../lib/physics/magnetism/visualization';
 import { Apparatus } from './Models';
 import { ParticleMotion } from './ParticleMotion';
 import { WorldContext, type World } from './Primitives';
@@ -40,6 +40,7 @@ export default function ThreeScene({tab,p,view,frame,onChange,clock,playing,rese
   const world=useMemo<World>(()=>({...frameData,clock,labels:view.labels,low,controls,toWorld:v=>new THREE.Vector3((v.x-frameData.centre.x)*frameData.factor,(v.y-frameData.centre.y)*frameData.factor,(v.z-frameData.centre.z)*frameData.factor),toPhysical:v=>vec(v.x/frameData.factor+frameData.centre.x,v.y/frameData.factor+frameData.centre.y,v.z/frameData.factor+frameData.centre.z)}),[frameData,clock,view.labels,low]);
   const contextCleanup=useRef<()=>void>(()=>{});useEffect(()=>()=>contextCleanup.current(),[]);
   const motion=tab==='charges'||tab==='selector';
+  const selectorComplete=tab==='selector'&&clock.current.time>=SELECTOR_FLIGHT_SECONDS;
   const cameraKey=(e:React.KeyboardEvent)=>{if(e.target!==e.currentTarget&&e.target!==host.current?.querySelector('canvas'))return;const c=controls.current;if(!c)return;
     let handled=true;const offset=c.object.position.clone().sub(c.target),spherical=new THREE.Spherical().setFromVector3(offset);
     if(e.key==='Home')setCameraReset(n=>n+1);
@@ -61,13 +62,13 @@ export default function ThreeScene({tab,p,view,frame,onChange,clock,playing,rese
         <WorldContext.Provider value={world}><group scale={frameData.factor} position={tuple({x:-frameData.centre.x*frameData.factor,y:-frameData.centre.y*frameData.factor,z:-frameData.centre.z*frameData.factor})}>
           {motion?<ParticleMotion key={tab} tab={tab} p={p} view={view} beam={beam} resetVersion={resetVersion} summary={summary}/>:<Apparatus tab={tab} p={p} view={view} plane={plane} onChange={onChange}/>}
         </group></WorldContext.Provider>
-        <Invalidate change={`${stepVersion}-${resetVersion}-${JSON.stringify(p)}-${JSON.stringify(view)}`}/>
-      </Canvas><OverlayLayer/></OverlayContext.Provider>{tab==='selector'&&<span className={`gl-beam-badge ${beam.passes?'pass':'reject'}`}>{beam.termination==='stationary'?'Beam stationary':beam.passes?'Beam transmitted':'Beam rejected'}</span>}<span className="gl-badge">WEBGL · {low?'ECONOMY':'3D LAB'}</span>
+        <Invalidate change={`${playing}-${stepVersion}-${resetVersion}-${JSON.stringify(p)}-${JSON.stringify(view)}`}/>
+      </Canvas><OverlayLayer/></OverlayContext.Provider>{tab==='selector'&&<span role={selectorComplete?'status':undefined} className={`gl-beam-badge ${beam.passes?'pass':'reject'}`}>{selectorComplete?selectorResult(beam):'Single particle · '+(playing?'In flight':clock.current.time>0?'Paused':'Ready')}</span>}<span className="gl-badge">WEBGL · {low?'ECONOMY':'3D LAB'}</span>
     </div>
     <div className="gl-options"><label><input type="checkbox" checked={axes} onChange={e=>setAxes(e.target.checked)}/>Axes</label><label><input type="checkbox" checked={grid} onChange={e=>setGrid(e.target.checked)}/>Grid</label>{tab==='fields'&&<label>Drag plane <select aria-label="Drag plane" value={plane} onChange={e=>setPlane(e.target.value as DragPlane)}><option>XY</option><option>XZ</option><option>YZ</option></select></label>}{tab==='charges'&&<label><input type="checkbox" checked={follow} onChange={e=>setFollow(e.target.checked)}/>Follow particle</label>}<button onClick={()=>onFallback('Compatible view selected.')}>Compatible view</button></div>
     <p className="gl-instructions">Drag to orbit · wheel / pinch to zoom · right-drag / two fingers to pan. Focus scene: arrows orbit, Shift + arrows pan, + / − zoom, Home reframe.{tab==='fields'?' Move P or compass; Page Up / Down changes depth.':''}</p>
     {tab==='fields'&&<p className="gl-model-note">Streamlines: sampled from the probe’s idealized field model; finite integration and line density are illustrative. Winding count is schematic. Arrows and moving dots show direction, not field propagation.</p>}
-    {motion&&<p className="gl-model-note">Analytic SI trajectory · playback slowed · vectors scaled independently for visibility. {tab==='selector'?'Parameter edits restart the beam. Each emission starts a fresh trail.':'Trail persists during this 3D view; parameter edits and reset clear it.'}</p>}
+    {motion&&<p className="gl-model-note">Analytic SI trajectory · playback slowed · vectors scaled independently for visibility. {tab==='selector'?'Single particle: Play launches one flight; Replay starts a new one. Solid mint is the particle trail; blue arrows show B and gold arrows show E.':'Trail persists during this 3D view; parameter edits and reset clear it.'}</p>}
     {(tab==='motor'||tab==='wires')&&<p className="gl-model-note">{tab==='motor'?'Translucent poles expose the fixed conductor. Arrows show quantitative force; no mechanical motion is simulated.':'Wire centres stay fixed. Arrows show force per unit length; displacement is not simulated.'}</p>}
     <div className="sr-only" ref={summary} data-motion={motion?tab:undefined} data-vectors={JSON.stringify(staticVectors(tab,p))}>Physical vectors use the same SI state as the numerical readouts.</div><div className="sr-only" ref={stats} data-gl-stats="true" aria-hidden="true"/>
   </div>;

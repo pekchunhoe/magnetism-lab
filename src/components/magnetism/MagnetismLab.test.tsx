@@ -3,6 +3,23 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { MagnetismLab } from './MagnetismLab';
 afterEach(cleanup);
 describe('complete laboratory',()=>{
+  it('completes one selector particle, keeps the endpoint, and replays with the chosen parameters',()=>{
+    render(<MagnetismLab/>);fireEvent.click(screen.getByRole('tab',{name:'Velocity Selector'}));
+    fireEvent.change(screen.getByRole('spinbutton',{name:'Particle speed value'}),{target:{value:'200'}});
+    const state=()=>document.querySelector('[data-particle="selector"]')!;
+    for(let i=0;i<45;i++)fireEvent.click(screen.getByRole('button',{name:'Step simulation forward'}));
+    expect(state()).toHaveAttribute('data-complete','true');
+    const endpoint=state().getAttribute('data-position'),time=state().getAttribute('data-time');
+    fireEvent.click(screen.getByRole('button',{name:'Step simulation forward'}));
+    expect(state()).toHaveAttribute('data-position',endpoint);expect(state()).toHaveAttribute('data-time',time);
+    fireEvent.click(screen.getByRole('button',{name:'Replay particle'}));
+    expect(state()).toHaveAttribute('data-time','0');expect(state()).toHaveAttribute('data-complete','false');
+    expect(state()).toHaveAttribute('data-trail-count','2');expect(screen.getByRole('spinbutton',{name:'Particle speed value'})).toHaveValue(200);
+    fireEvent.click(screen.getByRole('button',{name:'Pause simulation'}));
+    fireEvent.click(screen.getByRole('button',{name:'Reset experiment'}));
+    expect(screen.getByRole('spinbutton',{name:'Particle speed value'})).toHaveValue(100);
+    expect(screen.getByRole('button',{name:'Play simulation'})).toBeInTheDocument();
+  },15000); // This regression executes a complete 45-step UI flight.
   it('selector parameter edits restart at the source and clear the trail, preserving pause and step',()=>{
     render(<MagnetismLab/>);fireEvent.click(screen.getByRole('tab',{name:'Velocity Selector'}));
     fireEvent.click(screen.getByRole('button',{name:'2D'}));

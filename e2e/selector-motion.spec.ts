@@ -66,13 +66,16 @@ for(const [device,width,height] of [['desktop',1536,1100],['tablet',820,1180],['
           }
         }
         await page.locator('.simulation-card').screenshot({path:`artifacts/selector-fix/after-${device}-${dimension.toLowerCase()}-${particle}.png`});
-        // Next emission clears the old trail instead of joining it to the source.
-        let last=Number((await motion(page)).trailCount),wrapped=false;
+        // A single flight completes and holds its trail; it never emits again.
+        let last=Number((await motion(page)).trailCount);
         for(let i=0;i<25;i++){
           await page.getByRole('button',{name:'Step simulation forward',exact:true}).click();
-          const count=Number((await motion(page)).trailCount);if(count<last)wrapped=true;last=count;
+          const count=Number((await motion(page)).trailCount);expect(count).toBeGreaterThanOrEqual(last);last=count;
         }
-        expect(wrapped).toBe(true);await finiteAndJoined(page);
+        await expect(state(page)).toHaveAttribute('data-complete','true');
+        const completed=await motion(page);await page.getByRole('button',{name:'Step simulation forward',exact:true}).click();
+        expect((await motion(page)).position).toBe(completed.position);expect((await motion(page)).time).toBe(completed.time);
+        await expect(page.getByRole('button',{name:'Replay particle',exact:true})).toBeVisible();await finiteAndJoined(page);
         await page.getByRole('button',{name:'Reset experiment',exact:true}).click();await atSource(page);
       }
     }

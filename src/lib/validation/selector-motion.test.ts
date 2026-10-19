@@ -1,12 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { add, cross, defaults, ELECTRON_MASS, magnitude, period, scale, selectorPosition, selectorState, vec } from '../physics/magnetism/core';
 import { analyserState, SELECTOR, selectorTrajectory } from '../physics/magnetism/trajectories';
-import { beamTrailIndex, sampleBeam, sceneFrame } from '../physics/magnetism/visualization';
+import { beamTrailIndex, sampleBeam, sceneFrame, SELECTOR_FLIGHT_SECONDS, selectorResult } from '../physics/magnetism/visualization';
 import { readings } from '../physics/magnetism/graphs';
 
 const base=defaults('selector');
 const distance=(a:ReturnType<typeof vec>,b:ReturnType<typeof vec>)=>magnitude(add(a,scale(b,-1)));
 describe('selector Lorentz motion and shared renderer state',()=>{
+  it('one flight ends at the exact detector, collision or return point and never wraps',()=>{
+    for(const p of [base,{...base,analyser:true},{...base,field:0,electric:40000},{...base,mass:ELECTRON_MASS,charge:-base.charge,speed:1e6},{...base,speed:0,field:0,electric:0}]){
+      const beam=selectorTrajectory(p),end=beam.samples.at(-1)!;
+      for(const clock of [SELECTOR_FLIGHT_SECONDS,SELECTOR_FLIGHT_SECONDS+.01,SELECTOR_FLIGHT_SECONDS*2,1000]){
+        const sample=sampleBeam(p,beam,clock);
+        expect(sample.complete).toBe(true);expect(sample.fraction).toBe(1);expect(sample.time).toBe(beam.duration);
+        expect(sample.position).toEqual(end.position);expect(sample.velocity).toEqual(end.velocity);expect(sample.stage).toBe(end.stage);
+        expect(beamTrailIndex(beam,sample.time)).toBe(beam.samples.length);
+      }
+      expect(selectorResult(beam).length).toBeGreaterThan(0);
+    }
+  });
   for(const sign of [-1,1])it(`balanced fields are straight for charge sign ${sign}`,()=>{
     const p={...base,charge:sign*base.charge};
     for(const t of [0,1e-10,1e-7,3e-6]){

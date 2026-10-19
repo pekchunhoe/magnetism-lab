@@ -90,8 +90,8 @@ test('zero fields, stationary particles, exact velocity selection and analyser f
   await choose(page,'Moving Charges');await set(page,'Magnetic field',0);expect(await readout(page,'Magnetic force')).toBe(0);await expect(page.locator('[data-vector="F"]')).toHaveCount(0);await expect(page.locator('.graph')).toContainText('No finite orbit radius');await page.locator('.graph').hover();await noInvalidGeometry(page);
   await page.getByRole('button',{name:'Step simulation forward'}).click();expect(Number(await page.locator('[data-particle="charge"]').getAttribute('data-time'))).toBeGreaterThan(0);
   await set(page,'Particle speed',0);const stationary=await page.locator('[data-particle="charge"] circle').last().getAttribute('cx');await page.getByRole('button',{name:'Step simulation forward'}).click();expect(await page.locator('[data-particle="charge"] circle').last().getAttribute('cx')).toBe(stationary);
-  await choose(page,'Velocity Selector');expect(await readout(page,'Net entry force · y')).toBe(0);await expect(page.locator('.simulation-scene')).toContainText('Beam transmitted');
-  await page.getByRole('combobox',{name:'Particle',exact:true}).selectOption('negative');expect(await readout(page,'Net entry force · y')).toBe(0);await expect(page.locator('.simulation-scene')).toContainText('Beam transmitted');
+  await choose(page,'Velocity Selector');expect(await readout(page,'Net entry force · y')).toBe(0);await expect(page.locator('[data-particle="selector"]')).toHaveAttribute('data-beam-passes','true');
+  await page.getByRole('combobox',{name:'Particle',exact:true}).selectOption('negative');expect(await readout(page,'Net entry force · y')).toBe(0);await expect(page.locator('[data-particle="selector"]')).toHaveAttribute('data-beam-passes','true');
   await set(page,'Electric field',0);await expect(page.locator('[data-vector="Fᴇ"]')).toHaveCount(0);expect(await readout(page,'Net entry force · y')).toBeGreaterThan(0);
   await set(page,'Magnetic field',0);await noInvalidGeometry(page);await expect(page.locator('[data-vector="Fʙ"]')).toHaveCount(0);expect(await readout(page,'Net entry force · y')).toBe(0);
   await page.getByRole('button',{name:'Reset experiment'}).click();await page.getByLabel('Magnetic analyser',{exact:true}).check();
@@ -154,8 +154,8 @@ test('compass and both wires drag, numeric typing reverses current, and limits c
 });
 test('fast electrons stop at the selector entrance; selected electrons reach the slit',async({page})=>{
   await choose(page,'Velocity Selector');await page.getByRole('combobox',{name:'Particle',exact:true}).selectOption('electron');await set(page,'Particle speed',1000);
-  await expect(page.locator('[data-particle="selector"]')).toHaveAttribute('data-termination','entrance');await expect(page.locator('.simulation-scene')).toContainText('Beam rejected');await noInvalidGeometry(page);
-  await set(page,'Particle speed',100);await expect(page.locator('[data-particle="selector"]')).toHaveAttribute('data-termination','exit');await expect(page.locator('.simulation-scene')).toContainText('Beam transmitted');expect(await readout(page,'Net entry force · y')).toBe(0);
+  await expect(page.locator('[data-particle="selector"]')).toHaveAttribute('data-termination','entrance');await expect(page.locator('[data-particle="selector"]')).toHaveAttribute('data-beam-passes','false');await noInvalidGeometry(page);
+  await set(page,'Particle speed',100);await expect(page.locator('[data-particle="selector"]')).toHaveAttribute('data-termination','exit');await expect(page.locator('[data-particle="selector"]')).toHaveAttribute('data-beam-passes','true');expect(await readout(page,'Net entry force · y')).toBe(0);
 });
 test('reversing B preserves launch velocity while updating the relative launch angle',async({page})=>{
   await choose(page,'Moving Charges');await set(page,'Launch angle to B',45);

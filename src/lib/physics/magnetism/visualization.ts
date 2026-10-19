@@ -3,7 +3,15 @@ import { add, cross, magnitude, motorForce, particlePosition, rad, rotate, scale
 import { analyserState, particleDuration, particleVelocity, selectorForces, selectorTrajectory, selectorVelocity, SELECTOR } from './trajectories';
 
 export type Beam = ReturnType<typeof selectorTrajectory>;
-export interface MotionSample { position:Vec; velocity:Vec; force:Vec; electric:Vec; magnetic:Vec; time:number; fraction:number; stage:string }
+export interface MotionSample { position:Vec; velocity:Vec; force:Vec; electric:Vec; magnetic:Vec; time:number; fraction:number; stage:string; complete?:boolean }
+export const SELECTOR_FLIGHT_SECONDS=10/3;
+export function selectorResult(beam:Beam) {
+  if(beam.termination==='stationary')return 'Particle stationary';
+  if(beam.termination==='plate')return 'Plate collision';
+  if(beam.termination==='entrance')return 'Returned through entrance';
+  if(!beam.passes)return 'Exit slit collision';
+  return beam.samples.at(-1)!.stage==='analyser'?'Detected at analyser':'Detected after selector';
+}
 export const tuple=(v:Vec):[number,number,number]=>[v.x,v.y,v.z];
 export const chargePath=(p:Params,count=361)=>Array.from({length:count},(_,i)=>particlePosition(p,particleDuration(p)*i/(count-1)));
 export function sampleCharge(p:Params,clock:number):MotionSample {
@@ -12,7 +20,7 @@ export function sampleCharge(p:Params,clock:number):MotionSample {
   return {position:particlePosition(p,time),velocity,force,electric:vec(),magnetic:force,time,fraction,stage:'magnetic'};
 }
 export function sampleBeam(p:Params,beam:Beam,clock:number):MotionSample {
-  const fraction=((clock*.3)%1+1)%1,time=fraction*beam.duration;
+  const fraction=Math.min(1,Math.max(0,clock/SELECTOR_FLIGHT_SECONDS)),time=fraction*beam.duration,complete=fraction===1;
   const exit=beam.selectorEnd;
   const slit=beam.samples.find(s=>s.stage==='gap');
   let position:Vec,velocity:Vec,stage:string;
@@ -23,11 +31,14 @@ export function sampleBeam(p:Params,beam:Beam,clock:number):MotionSample {
     if(p.analyser&&w!==0){({position,velocity}=analyserState(p,slit,dt));stage='analyser';}
     else{position=add(slit.position,scale(v,dt));velocity=v;stage='drift';}
   }
+  // Hold the exact terminal sample, including the snapped collision/return
+  // coordinate. Never extrapolate past the apparatus or wrap to the source.
+  if(complete)({position,velocity,stage}=beam.samples.at(-1)!);
   const f=selectorForces(p,velocity),electric=stage==='selector'?f.electric:vec(),magnetic=stage==='selector'||stage==='analyser'?f.magnetic:vec();
   // Factor out q before subtraction, just as the entry-force readout does.
   // This avoids a fictitious net arrow from subtracting rounded qE and qvB.
   const force=stage==='selector'?vec(p.charge*velocity.y*p.field,p.charge*(p.electric-velocity.x*p.field)):stage==='analyser'?magnetic:vec();
-  return {position,velocity,force,electric,magnetic,time,fraction,stage};
+  return {position,velocity,force,electric,magnetic,time,fraction,stage,complete};
 }
 /** First point strictly after the current particle; append the exact head here. */
 export function beamTrailIndex(beam:Beam,time:number) {

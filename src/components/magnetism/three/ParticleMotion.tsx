@@ -34,7 +34,7 @@ export function ParticleMotion({tab,p,view,beam,resetVersion,summary}:{tab:TabId
     }else{
       furthest.current=Math.max(furthest.current,Math.floor(s.fraction*(points.length-1))+1);trailGeometry.setDrawRange(0,furthest.current);
     }
-    const out=summary.current;if(out){out.dataset.time=String(s.time);out.dataset.stage=s.stage;out.dataset.position=JSON.stringify(s.position);out.dataset.velocity=JSON.stringify(s.velocity);out.dataset.force=JSON.stringify(s.force);out.dataset.electric=JSON.stringify(s.electric);out.dataset.magnetic=JSON.stringify(s.magnetic);
+    const out=summary.current;if(out){out.dataset.time=String(s.time);out.dataset.elapsed=String(world.clock.current.time);out.dataset.complete=String(!!s.complete);out.dataset.stage=s.stage;out.dataset.position=JSON.stringify(s.position);out.dataset.velocity=JSON.stringify(s.velocity);out.dataset.force=JSON.stringify(s.force);out.dataset.electric=JSON.stringify(s.electric);out.dataset.magnetic=JSON.stringify(s.magnetic);
       out.dataset.trailCount=String(trailGeometry.drawRange.count);
       const attribute=trailGeometry.getAttribute('position'),head=trailGeometry.drawRange.count-1;
       out.dataset.trailEnd=JSON.stringify({x:attribute.getX(head),y:attribute.getY(head),z:attribute.getZ(head)});

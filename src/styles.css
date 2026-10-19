@@ -34,3 +34,4 @@
 @media(max-width:620px){.gl-viewport{height:330px}.gl-toolbar{padding:8px;gap:7px}.gl-presets button{font-size:9px;padding:6px 8px;min-height:34px}.gl-options{padding:7px 10px;gap:10px}.gl-options button{min-height:34px}.gl-instructions,.gl-model-note{font-size:9px}.gl-drag-handle{min-height:34px}}
 .gl-overlay{position:absolute!important;inset:0;pointer-events:none!important;overflow:hidden}.gl-overlay button{pointer-events:auto}.gl-viewport>.gl-overlay{height:100%;width:100%}
 .gl-beam-badge{position:absolute;right:12px;bottom:10px;font-size:9px;padding:4px 7px;border-radius:4px;background:#102b2cdd;color:#a9eacb;pointer-events:none}.gl-beam-badge.reject{color:#ffb0b5;background:#2e1d2add}
+.simulation-card>.gl-model-note{color:var(--muted)}
