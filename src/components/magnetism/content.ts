@@ -20,6 +20,6 @@ export function theory(tab:TabId,p:Params) {
     charges:{formula:'F = |q|vB sin θ     r = mv⊥ / |q|B',note:'Launch angle is relative to B. Reversing B preserves launch velocity and updates this angle. A uniform magnetic field changes direction, not speed. Parallel motion stays straight; oblique motion forms a helix. Motion is shown on a slowed time scale.'},
     motor:{formula:'F = BIl sin θ',note:'Direction follows Iℓ × B. Positive current lies in the x–z plane; +z field gives −y force. Displacement is illustrative, not a mechanical dynamics model.'},
     wires:{formula:'F / L = μ₀I₁I₂ / 2πd',note:'Ideal long, parallel wires. Same current direction attracts; opposite directions repel. Animated displacement is exaggerated; the stated separation sets the calculation.'},
-    selector:{formula:'vselected = E / B     ranalyser = mv / |q|B',note:'E is downward (−y) and B is into the page (−z), so forces oppose for entry velocity +x. The slit has a 1.4 cm half-aperture. The design radius uses selected speed E/B. Particles stop at solid walls; fringe fields are neglected.'}
+    selector:{formula:'vselected = E / B     ranalyser = mv / |q|B',note:'E is downward (−y) and B is into the page (−z). The physical exit opening is 0.10 mm high (±0.05 mm), centered on the beam axis. Finite-length selectors can transmit off-selected velocities when the trajectory clears the opening. Particles are points; visible spheres are enlarged markers. Fringe fields are neglected.'}
   }[tab];
 }

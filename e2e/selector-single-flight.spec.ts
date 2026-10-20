@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 
-const folder='artifacts/selector-single-flight';
+const folder='artifacts/selector-ultra-narrow/single-flight';
 const state=(page:Page)=>page.locator('[data-motion="selector"]');
 const read=(page:Page)=>state(page).evaluate(el=>({...((el as HTMLElement).dataset)}));
 const input=(page:Page,label:string)=>page.getByRole('spinbutton',{name:label+' value',exact:true});
@@ -60,14 +60,24 @@ for(const dimension of ['2D','3D'])test(`single particle ${dimension}: complete 
     expect(new Set(frames.map(f=>f.position)).size).toBeGreaterThan(15);
     const end=await read(page);expect(end.complete).toBe('true');expect(Number(end.elapsed)).toBe(10/3);
     expect(JSON.parse(end.position).x).toBeCloseTo(.24,12);
-    await expect(page.getByRole('status')).toContainText('Detected after selector');
+    await expect(page.getByRole('status')).toContainText('Transmitted through aperture · selected velocity matched');
     await expect(page.getByRole('button',{name:'Replay particle',exact:true})).toBeVisible();
     await page.waitForTimeout(450);expect((await read(page)).position).toBe(end.position);expect((await read(page)).elapsed).toBe(end.elapsed);
     await page.locator('.simulation-card').screenshot({path:`${folder}/after-${dimension}-${particle}-completed.png`});
     await writeFile(`${folder}/after-${dimension}-${particle}-frames.json`,JSON.stringify(frames,null,2));
     await testInfo.attach(`${dimension}-${particle}-frames`,{body:JSON.stringify(frames),contentType:'application/json'});
+    // Capture the reset itself. Playwright can return from a real click after
+    // playback has already advanced, so a <200 ms host-time assumption is flaky.
+    await page.evaluate(()=>{
+      const el=document.querySelector<HTMLElement>('[data-motion="selector"]')!,frames:Record<string,string>[]=[];
+      const observer=new MutationObserver(()=>frames.push({...el.dataset} as Record<string,string>));
+      observer.observe(el,{attributes:true,attributeFilter:['data-elapsed','data-position','data-trail-count']});
+      Reflect.set(window,'selectorReplayAudit',{frames,observer});
+    });
     await page.getByRole('button',{name:'Replay particle',exact:true}).click();
-    expect(Number((await read(page)).elapsed)).toBeLessThan(.2);expect(Number((await read(page)).trailCount)).toBeLessThan(Number(end.trailCount));
+    await expect.poll(()=>page.evaluate(()=>Reflect.get(window,'selectorReplayAudit').frames.some((f:Record<string,string>)=>
+      f.elapsed==='0'&&f.complete==='false'&&JSON.parse(f.position).x===-.28&&Number(f.trailCount)<=2))).toBe(true);
+    await page.evaluate(()=>Reflect.get(window,'selectorReplayAudit').observer.disconnect());
     const replayFrames=await record(page,false);continuous(replayFrames);expect(replayFrames.at(-1)!.complete).toBe('false');
     await page.getByRole('button',{name:'Pause simulation',exact:true}).click();
     for(const [label,value] of [['Particle speed',200],['Electric field',16],['Magnetic field',160]] as const){
@@ -94,14 +104,17 @@ test('single flights hold collision and return boundaries and preserve genuine c
       if(scenario==='plate')await input(page,'Magnetic field').fill('0');
       if(scenario==='return'){await page.getByRole('combobox',{name:'Particle',exact:true}).selectOption('electron');await input(page,'Particle speed').fill('1000');}
       if(scenario==='loops')await input(page,'Particle speed').fill('300');
-      for(let i=0;i<30;i++)await page.getByRole('button',{name:'Step simulation forward',exact:true}).click();
+      for(let i=0;i<30;i++){
+        await page.getByRole('button',{name:'Step simulation forward',exact:true}).click();
+        if(scenario==='loops'&&JSON.parse((await read(page)).velocity).x<0)break;
+      }
       if(scenario==='loops'){
         const turning=await read(page);expect(JSON.parse(turning.velocity).x).toBeLessThan(0);expect(turning.complete).toBe('false');
         await page.locator('.simulation-card').screenshot({path:`${folder}/after-${dimension}-valid-loops-fields-off.png`});
         await page.getByLabel('Field lines',{exact:true}).check();expect((await read(page)).position).toBe(turning.position);
         await page.getByLabel('Field lines',{exact:true}).uncheck();
       }
-      for(let i=0;i<15;i++)await page.getByRole('button',{name:'Step simulation forward',exact:true}).click();
+      for(let i=0;i<(scenario==='loops'?43:15);i++)await page.getByRole('button',{name:'Step simulation forward',exact:true}).click();
       await expect(state(page)).toHaveAttribute('data-complete','true');const end=await read(page);
       await page.getByRole('button',{name:'Step simulation forward',exact:true}).click();expect((await read(page)).position).toBe(end.position);
       if(scenario==='plate'){expect(Math.abs(JSON.parse(end.position).y)).toBe(.115);await expect(page.getByRole('status')).toHaveText('Rejected: plate collision');}

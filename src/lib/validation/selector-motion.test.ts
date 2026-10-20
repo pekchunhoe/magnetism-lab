@@ -67,7 +67,7 @@ describe('selector Lorentz motion and shared renderer state',()=>{
   it('valid crossed-field loops survive until the first physical boundary',()=>{
     const p={...base,speed:300000},beam=selectorTrajectory(p);
     expect(beam.samples.some(s=>s.stage==='selector'&&s.velocity.x<0)).toBe(true);
-    expect(beam.termination).toBe('exit');
+    expect(beam.termination).toBe('slit');
     expect(beam.samples.filter(s=>s.stage==='selector').every(s=>s.position.x>=SELECTOR.entrance&&Math.abs(s.position.y)<SELECTOR.halfHeight)).toBe(true);
   });
   it('dense trajectories can be framed without exceeding the JavaScript argument limit',()=>{
@@ -87,7 +87,7 @@ describe('selector Lorentz motion and shared renderer state',()=>{
   it('stops at the entrance tunnel wall before a later plate or return plane',()=>{
     const p={...base,speed:1000,field:0,electric:40000},beam=selectorTrajectory(p),end=beam.samples.at(-1)!;
     expect(beam.termination).toBe('entrance-wall');expect(beam.passes).toBe(false);
-    expect(end.position.y).toBeCloseTo(-SELECTOR.slitHalfHeight,13);
+    expect(end.position.y).toBeCloseTo(-SELECTOR.entranceSlitHalfHeight,13);
     expect(end.position.x).toBeGreaterThan(SELECTOR.entrance);
     expect(end.position.x).toBeLessThan(SELECTOR.entrance+SELECTOR.wallThickness/2);
     const returning=selectorTrajectory({...base,electric:0});
@@ -95,7 +95,7 @@ describe('selector Lorentz motion and shared renderer state',()=>{
     expect(returning.path.at(-1)!.x).toBeCloseTo(SELECTOR.entrance+SELECTOR.wallThickness/2,12);
   });
   it('detects a grazing exit-slit impact inside the solid slab, after its front face',()=>{
-    const p={...base,field:0,electric:28},beam=selectorTrajectory(p),end=beam.samples.at(-1)!;
+    const p={...base,field:0,electric:.1},beam=selectorTrajectory(p),end=beam.samples.at(-1)!;
     // Independent electric-only reference up to the field exit, then a straight
     // tangent in the field-free gap (the E field does not fill the wall).
     const a=p.charge*p.electric/p.mass,exitTime=(SELECTOR.exit-SELECTOR.entrance)/p.speed;
@@ -108,7 +108,7 @@ describe('selector Lorentz motion and shared renderer state',()=>{
     expect(end.position.y).toBeCloseTo(-SELECTOR.slitHalfHeight,12);
   });
   it('transmits geometrically valid unbalanced beams and terminates independently of frame size',()=>{
-    for(const speed of [99000,101000]){
+    for(const speed of [99900,100100]){
       const p={...base,speed},beam=selectorTrajectory(p);
       expect(beam.passes).toBe(true);expect(speed).not.toBe(p.electric/p.field);
       for(const increment of [.001,.08,5]){
@@ -121,7 +121,7 @@ describe('selector Lorentz motion and shared renderer state',()=>{
     }
   });
   it('analyser uses E=0 and stops at its first return plane with transverse entry velocity',()=>{
-    for(const sign of [-1,1])for(const speed of [99000,100000,101000]){
+    for(const sign of [-1,1])for(const speed of [99900,100000,100100]){
       const p={...base,analyser:true,charge:sign*base.charge,speed},beam=selectorTrajectory(p),slit=beam.samples.find(s=>s.stage==='gap')!;
       expect(beam.passes).toBe(true);
       const analyser=beam.samples.filter(s=>s.stage==='analyser');
@@ -138,7 +138,7 @@ describe('selector Lorentz motion and shared renderer state',()=>{
     for(const mass of [ELECTRON_MASS,base.mass,1.6605390666e-28,1.6605390666e-25])for(const sign of [-1,1])for(const field of [0,.1,.2])for(const electric of [0,20000,40000])for(const speed of [0,500000,1000000]){
       const p={...base,mass,charge:sign*base.charge,field,electric,speed,analyser:true},beam=selectorTrajectory(p);
       expect(beam.samples.every(s=>[s.time,...Object.values(s.position),...Object.values(s.velocity)].every(Number.isFinite))).toBe(true);
-      expect(beam.samples.filter(s=>s.stage==='selector').every(s=>s.position.x>=SELECTOR.entrance+SELECTOR.wallThickness/2-1e-12||Math.abs(s.position.y)<=SELECTOR.slitHalfHeight+1e-12)).toBe(true);
+      expect(beam.samples.filter(s=>s.stage==='selector').every(s=>s.position.x>=SELECTOR.entrance+SELECTOR.wallThickness/2-1e-12||Math.abs(s.position.y)<=SELECTOR.entranceSlitHalfHeight+1e-12)).toBe(true);
       for(let i=0;i<beam.samples.length-1;i+=Math.max(1,Math.floor(beam.samples.length/17))){
         const point=beam.samples[i],s=sampleBeam(p,beam,point.time/beam.duration/.3);
         expect(distance(s.position,point.position)).toBeLessThan(1e-9);

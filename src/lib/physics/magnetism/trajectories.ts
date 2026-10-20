@@ -1,5 +1,7 @@
 import type { Params, Vec } from '../../../types/magnetism';
 import { add, cosine, period, sine, selectorPosition, selectorState, vec } from './core';
+import { SELECTOR, ANALYSER_X, exitApertureTransit } from './selector-geometry';
+export { SELECTOR, ANALYSER_X } from './selector-geometry';
 export function particleDuration(p:Params) {
   const T=period(p.mass,p.charge,p.field);
   return Number.isFinite(T)?T*1.8:0.3/Math.max(p.speed,1000);
@@ -15,8 +17,6 @@ export function selectorForces(p:Params,v:Vec) {
   return {electric:vec(0,-p.charge*p.electric),magnetic:vec(-p.charge*v.y*p.field,p.charge*v.x*p.field)};
 }
 export interface BeamSample {position:Vec;velocity:Vec;time:number;stage:'selector'|'gap'|'analyser'|'drift'}
-export const SELECTOR={entrance:-.28,exit:.02,halfHeight:.115,slitX:.04,slitHalfHeight:.014,wallThickness:.009};
-export const ANALYSER_X=SELECTOR.slitX+SELECTOR.wallThickness/2;
 /** The analyser occupies x >= ANALYSER_X, with E=0, B=-z. Its return plane is
  * a detector. The selector B magnitude is reused, but its region is separate. */
 export function analyserState(p:Params,start:BeamSample,dt:number) {
@@ -56,7 +56,7 @@ function selectorBoundary(p:Params) {
   // The entrance aperture is a real 9 mm slab, not just a plane. Check the
   // exact y crossings and the first backward face crossing, independently of
   // animation frames or trail resolution. Later cycles drift away from it.
-  const h=SELECTOR.wallThickness/2,aperture=SELECTOR.slitHalfHeight;
+  const h=SELECTOR.wallThickness/2,aperture=SELECTOR.entranceSlitHalfHeight;
   const acceleration=Math.abs(p.charge*(p.speed*p.field-p.electric)/p.mass);
   const ratio=acceleration?aperture*omega*omega/(2*acceleration):Infinity;
   const side=omega===0?(acceleration?Math.sqrt(2*aperture/acceleration):Infinity):ratio<=1?2*Math.asin(Math.sqrt(ratio))/omega:Infinity;
@@ -80,23 +80,6 @@ function selectorBoundary(p:Params) {
   return Number.isFinite(time)?{time,kind}:{time:1e-6,kind:'stationary'};
 }
 
-/** First ray/solid intersection in the field-free gap, including the inner
- * aperture surfaces. A ray can miss the finite wall; it is then not transmitted. */
-function slitCollision(start:BeamSample,limit:number) {
-  let first=Infinity;
-  for(const sign of [-1,1]){
-    const lows=[SELECTOR.slitX-SELECTOR.wallThickness/2,sign>0?SELECTOR.slitHalfHeight:-SELECTOR.halfHeight];
-    const highs=[ANALYSER_X,sign>0?SELECTOR.halfHeight:-SELECTOR.slitHalfHeight];
-    let lo=0,hi=limit;
-    for(const [i,key] of (['x','y'] as const).entries()){
-      const v=start.velocity[key],at=start.position[key];
-      if(v===0){if(at<lows[i]||at>highs[i])hi=-1;}
-      else {const a=(lows[i]-at)/v,b=(highs[i]-at)/v;lo=Math.max(lo,Math.min(a,b));hi=Math.min(hi,Math.max(a,b));}
-    }
-    if(lo<=hi)first=Math.min(first,lo);
-  }
-  return first;
-}
 export function selectorTrajectory(p:Params) {
   const samples:BeamSample[]=[],length=SELECTOR.exit-SELECTOR.entrance,origin=vec(SELECTOR.entrance,0),boundary=selectorBoundary(p),exitTime=boundary.time;
   let lastLocal=vec();
@@ -112,12 +95,14 @@ export function selectorTrajectory(p:Params) {
     put(t,add(at,origin),selectorVelocity(p,t),'selector');lastLocal=at;
   }
   let passes=false,termination=boundary.kind;
-  const exit=samples.at(-1)!,gap=ANALYSER_X-SELECTOR.exit;
+  const exit=samples.at(-1)!;
   if(boundary.kind==='exit'&&lastLocal.x>=length-1e-8&&exit.velocity.x>0) {
-    const dt=gap/exit.velocity.x,hit=slitCollision(exit,dt),travel=Math.min(dt,hit),slit=add(exit.position,vec(exit.velocity.x*travel,exit.velocity.y*travel));
-    put(exitTime+travel,slit,exit.velocity,'gap');passes=!Number.isFinite(hit)&&Math.abs(slit.y)<SELECTOR.slitHalfHeight;
+    const transit=exitApertureTransit(exit.position,exit.velocity),dt=transit.time,hit=transit.hit,travel=Math.min(dt,hit),slit=add(exit.position,vec(exit.velocity.x*travel,exit.velocity.y*travel));
+    put(exitTime+travel,slit,exit.velocity,'gap');passes=transit.passes;
     termination=Number.isFinite(hit)?'slit':passes?'exit':'missed-slit';
-    if(passes){
+    // A ray can bypass the finite wall above/below it. That is not aperture
+    // transmission, but neither is it a collision: retain its downstream motion.
+    if(!Number.isFinite(hit)){
       const w=-p.charge*p.field/p.mass,startTime=exitTime+dt;
       if(p.analyser&&Math.abs(w)>0){
         const returnTime=2*Math.atan2(exit.velocity.x,-Math.sign(w)*exit.velocity.y)/Math.abs(w),start=samples.at(-1)!;
@@ -126,9 +111,12 @@ export function selectorTrajectory(p:Params) {
           put(startTime+t,state.position,state.velocity,'analyser');
         }
       } else {
-        for(let i=1;i<=80;i++){const dx=SELECTOR.slitX+.2-ANALYSER_X,t=dx*i/80/exit.velocity.x;put(startTime+t,add(slit,vec(exit.velocity.x*t,exit.velocity.y*t)),exit.velocity,'drift');}
+        for(let i=1;i<=80;i++){const dx=SELECTOR.observationX-ANALYSER_X,t=dx*i/80/exit.velocity.x;put(startTime+t,add(slit,vec(exit.velocity.x*t,exit.velocity.y*t)),exit.velocity,'drift');}
       }
     }
   }
-  return {samples,path:samples.map(s=>s.position),passes,duration:samples.at(-1)!.time,termination,selectorEnd:samples[count]};
+  const velocityMatched=p.field>0&&p.speed*p.field===p.electric;
+  const end=samples.at(-1)!;
+  const collision=['plate','entrance-wall','slit'].includes(termination)?{kind:termination,side:end.position.y>=0?'upper':'lower',time:end.time,position:end.position}:null;
+  return {samples,path:samples.map(s=>s.position),passes,velocityMatched,collision,duration:end.time,termination,selectorEnd:samples[count]};
 }

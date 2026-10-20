@@ -3,8 +3,9 @@ import { RoundedBox } from '@react-three/drei/core/RoundedBox';
 import * as THREE from 'three';
 import type { Params, TabId, Vec, ViewOptions } from '../../../types/magnetism';
 import { add, magnitude, motorForce, rad, scale, sine, cosine, sourceField, vec, wireField, wireForce } from '../../../lib/physics/magnetism/core';
-import { circularLine, helixWinding, spatialFieldLines, staticVectors, tuple } from '../../../lib/physics/magnetism/visualization';
+import { circularLine, helixWinding, spatialFieldLines, staticVectors, tuple, type Beam } from '../../../lib/physics/magnetism/visualization';
 import { SELECTOR, ANALYSER_X } from '../../../lib/physics/magnetism/trajectories';
+import { SELECTOR_SOLIDS } from '../../../lib/physics/magnetism/selector-geometry';
 import { ArrowLattice, C, Cable, FieldStreams, Label, Tube, useWorld, VectorArrow } from './Primitives';
 import { Draggable, ProbeBall, type DragPlane } from './Draggable';
 
@@ -44,15 +45,15 @@ export function Apparatus({tab,p,view,plane,onChange}:{tab:TabId;p:Params;view:V
   return null;
 }
 
-export function SelectorEquipment({p,path}:{p:Params;path:Vec[]}) {
+export function SelectorEquipment({p,beam}:{p:Params;beam:Beam}) {
+  const path=beam.path;
   const end=path.at(-1)!,w=useWorld(),e=w.extent,maxX=path.reduce((a,v)=>Math.max(a,v.x),.3),halfY=path.reduce((a,v)=>Math.max(a,Math.abs(v.y)),.125);
-  const centreX=(SELECTOR.entrance+SELECTOR.exit)/2,plateY=SELECTOR.halfHeight+.007,apertureY=(SELECTOR.halfHeight+SELECTOR.slitHalfHeight)/2,apertureHeight=SELECTOR.halfHeight-SELECTOR.slitHalfHeight;
+  const centreX=(SELECTOR.entrance+SELECTOR.exit)/2;
   return <><Cable a={vec(-.39,0)} b={vec(-.3,0)} r={.018} color={C.steel}/><Label at={vec(-.35,.045)}>Source</Label>
-    <Pole at={vec(centreX,plateY)} size={[SELECTOR.exit-SELECTOR.entrance,.014,.13]} color={C.gold} label="+"/><Pole at={vec(centreX,-plateY)} size={[SELECTOR.exit-SELECTOR.entrance,.014,.13]} color={C.blue} label="−"/>
-    <mesh position={[centreX,0,0]}><boxGeometry args={[SELECTOR.exit-SELECTOR.entrance,SELECTOR.halfHeight*2,.13]}/><meshBasicMaterial color={C.blue} transparent opacity={.035} depthWrite={false} side={THREE.DoubleSide}/></mesh>
-    {[SELECTOR.entrance,SELECTOR.slitX].flatMap(x=>[-1,1].map(s=><Pole key={`${x}-${s}`} at={vec(x,s*apertureY,0)} size={[SELECTOR.wallThickness,apertureHeight,.15]} color={C.steel} label=""/>))}
+    {SELECTOR_SOLIDS.map((solid,i)=><group key={i}><mesh position={tuple(solid.centre)} castShadow><boxGeometry args={solid.size}/><meshStandardMaterial color={solid.kind==='plate'?(solid.side==='upper'?C.gold:C.blue):C.steel} metalness={.45} roughness={.3}/></mesh>{solid.kind==='plate'&&<Label at={add(solid.centre,vec(0,0,SELECTOR.plateHalfDepth+.004))}>{solid.side==='upper'?'+':'−'}</Label>}</group>)}
+    <mesh position={[centreX,0,0]}><boxGeometry args={[SELECTOR.exit-SELECTOR.entrance,SELECTOR.halfHeight*2,2*SELECTOR.plateHalfDepth]}/><meshBasicMaterial color={C.blue} transparent opacity={.035} depthWrite={false} side={THREE.DoubleSide}/></mesh>
     <Label at={vec(-.13,.17)}>Crossed fields</Label><Label at={vec(.04,.15)}>Exit slit</Label>
     {p.analyser&&<><mesh position={[(ANALYSER_X+maxX)/2,0,-.075]}><boxGeometry args={[maxX-ANALYSER_X,halfY*2+.04,.016]}/><meshStandardMaterial color="#172d43" metalness={.5} roughness={.3}/></mesh><Label at={vec(.19,.12)}>Magnetic analyser · E = 0</Label></>}
-    <mesh position={tuple(end)}><sphereGeometry args={[e*.025,16,12]}/><meshStandardMaterial color={C.mint} emissive={C.mint} emissiveIntensity={.6}/></mesh><Label at={add(end,vec(0,-e*.07))}>Detector / impact</Label>
+    <mesh position={tuple(end)}><sphereGeometry args={[e*.025,16,12]}/><meshStandardMaterial color={C.mint} emissive={C.mint} emissiveIntensity={.6}/></mesh><Label at={add(end,vec(0,-e*.07))}>{beam.collision?'Impact':beam.passes||beam.termination==='missed-slit'?(p.analyser&&p.field>0?'Analyser detector':'Observation plane'):'Endpoint'}</Label>
   </>;
 }

@@ -9,10 +9,11 @@ export function selectorResult(beam:Beam) {
   if(beam.termination==='stationary')return 'Particle stationary';
   if(beam.termination==='plate')return 'Rejected: plate collision';
   if(beam.termination==='entrance-wall')return 'Rejected: entrance wall collision';
-  if(beam.termination==='missed-slit')return 'Rejected: missed exit aperture';
+  if(beam.termination==='missed-slit')return 'Missed aperture: bypassed exit wall';
   if(beam.termination==='entrance')return 'Returned through entrance';
   if(!beam.passes)return 'Rejected: exit slit collision';
-  return beam.samples.at(-1)!.stage==='analyser'?'Detected at analyser':'Detected after selector';
+  const selection=beam.velocityMatched?'selected velocity matched':'off-selected velocity';
+  return beam.samples.at(-1)!.stage==='analyser'?`Detected at analyser · ${selection}`:`Transmitted through aperture · ${selection}`;
 }
 export const tuple=(v:Vec):[number,number,number]=>[v.x,v.y,v.z];
 export const chargePath=(p:Params,count=361)=>Array.from({length:count},(_,i)=>particlePosition(p,particleDuration(p)*i/(count-1)));

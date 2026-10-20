@@ -42,9 +42,9 @@ export function ParticleMotion({tab,p,view,beam,resetVersion,summary}:{tab:TabId
   },-2); // Update physical transforms before controls, DOM projections and rendering.
   const lattice=useMemo(()=>tab==='selector'?[-.23,-.13,-.03].flatMap(x=>[-.07,.07].map(y=>vec(x,y,-.06))):[-.4,0,.4].flatMap(x=>[-.3,.3].map(y=>vec(world.centre.x+x*world.extent,world.centre.y+y*world.extent,world.centre.z-world.extent*.3))),[tab,world.extent,world.centre]);
   return <>
-    {tab==='selector'&&<SelectorEquipment p={p} path={points}/>}
+    {tab==='selector'&&<SelectorEquipment p={p} beam={beam}/>}
     {view.fields&&p.field>0&&<Label at={tab==='charges'?{x:world.centre.x+world.extent*.42,y:world.centre.y+world.extent*.55,z:world.centre.z}:vec(-.13,0,-.1)} color={C.blue}>B {tab==='selector'||p.fieldSign<0?'−z':'+z'}</Label>}
-    {view.fields&&tab==='selector'&&p.analyser&&p.field>0&&beam.passes&&<ArrowLattice origins={beam.samples.filter(s=>s.stage==='analyser').filter((_,i)=>i%40===20).map(s=>({...s.position,z:-.035}))} direction={vec(0,0,-p.field)} length={world.extent*.13}/>}
+    {view.fields&&tab==='selector'&&p.analyser&&p.field>0&&beam.samples.some(s=>s.stage==='analyser')&&<ArrowLattice origins={beam.samples.filter(s=>s.stage==='analyser').filter((_,i)=>i%40===20).map(s=>({...s.position,z:-.035}))} direction={vec(0,0,-p.field)} length={world.extent*.13}/>}
     {view.fields&&<><ArrowLattice origins={lattice} direction={vec(0,0,p.field*(tab==='charges'?p.fieldSign:-1))} length={world.extent*.16}/>{tab==='selector'&&<ArrowLattice origins={[-.23,-.13,-.03].map(x=>vec(x,.07,0))} direction={vec(0,-p.electric)} length={.13} color={C.gold}/>}</>}
     {view.trail&&<>{tab==='charges'&&<primitive object={preview}/>}<primitive object={line} ref={trail}/></>}
     <group ref={particle}><mesh><sphereGeometry args={[world.extent*.017,20,16]}/><meshStandardMaterial color={p.charge>0?C.red:C.blue} emissive={p.charge>0?C.red:C.blue} emissiveIntensity={1.7} roughness={.15}/></mesh><mesh><sphereGeometry args={[world.extent*.031,16,12]}/><meshBasicMaterial color={p.charge>0?C.red:C.blue} transparent opacity={.12} depthWrite={false}/></mesh></group>

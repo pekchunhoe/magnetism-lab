@@ -35,7 +35,7 @@ describe('browser audit regressions',()=>{
     const reverse=selectorTrajectory({...p,charge:-p.charge});expect(reverse.passes).toBe(true);expect(reverse.samples.at(-1)!.position.y).toBeLessThan(0);
   });
   it('unbalanced analyser entrance retains the actual transverse exit velocity',()=>{
-    const p={...defaults('selector'),analyser:true,speed:101000};const beam=selectorTrajectory(p),exit=beam.samples.filter(s=>s.stage==='selector').at(-1)!;
+    const p={...defaults('selector'),analyser:true,speed:100100};const beam=selectorTrajectory(p),exit=beam.samples.filter(s=>s.stage==='selector').at(-1)!;
     expect(exit.velocity).toEqual(selectorVelocity(p,exit.time));expect(exit.velocity.y).not.toBe(0);
     const a=beam.samples.find(s=>s.stage==='analyser');expect(a).toBeDefined();
     expect(Math.hypot(a!.velocity.x,a!.velocity.y)).toBeCloseTo(Math.hypot(exit.velocity.x,exit.velocity.y),6);

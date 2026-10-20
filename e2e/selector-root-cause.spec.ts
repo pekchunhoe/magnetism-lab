@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 
-const folder='artifacts/selector-root-cause';
+const folder='artifacts/selector-ultra-narrow/root-cause';
 const state=(page:Page)=>page.locator('[data-motion="selector"]');
 const read=(page:Page)=>state(page).evaluate(el=>({...((el as HTMLElement).dataset)}));
 const set=(page:Page,label:string,value:number)=>page.getByRole('spinbutton',{name:label+' value',exact:true}).fill(String(value));
@@ -83,11 +83,11 @@ test('finite aperture slabs stop entrance and grazing exit impacts in both rende
   for(const dimension of ['2D','3D'])for(const name of ['entrance','grazing']){
     await page.getByRole('button',{name:dimension,exact:true}).click();
     await page.getByRole('button',{name:'Reset experiment',exact:true}).click();
-    await set(page,'Magnetic field',0);await set(page,'Electric field',name==='entrance'?40:.028);
+    await set(page,'Magnetic field',0);await set(page,'Electric field',name==='entrance'?40:.0001);
     await set(page,'Particle speed',name==='entrance'?1:100);
     for(let i=0;i<43;i++)await page.getByRole('button',{name:'Step simulation forward',exact:true}).click();
     const end=await read(page),position=JSON.parse(end.position!);
-    expect(end.complete).toBe('true');expect(Math.abs(position.y)).toBeCloseTo(.014,12);
+    expect(end.complete).toBe('true');expect(Math.abs(position.y)).toBeCloseTo(name==='entrance'?.014:.00005,12);
     expect(position.x).toBeGreaterThan(name==='entrance'?-.28:.0355);
     expect(position.x).toBeLessThan(name==='entrance'?-.2755:.0445);
     await expect(page.getByRole('status')).toContainText(name==='entrance'?'entrance wall collision':'exit slit collision');

@@ -59,10 +59,13 @@ for(const [device,width,height] of [['desktop',1536,1100],['tablet',820,1180],['
         for(const key of ['position','velocity','force','electric','magnetic'])expect((await motion(page))[key]).toBe(before[key]);
         expect(await page.locator('.readout-grid').innerText()).toBe(readouts);
         await page.getByRole('button',{name:dimension,exact:true}).click();
+        // WebGL publishes its physical summary on its first rendered frame.
+        // A remounted view can exist before that frame has populated data.
+        await expect(state(page)).toHaveAttribute('data-position',before.position!);
         if(dimension==='3D'){
           for(const preset of ['Top','Side','Front','Perspective']){
             await page.getByRole('button',{name:preset,exact:true}).click();
-            expect((await motion(page)).position).toBe(before.position);await finiteAndJoined(page);
+            await expect(state(page)).toHaveAttribute('data-position',before.position!);await finiteAndJoined(page);
           }
         }
         await page.locator('.simulation-card').screenshot({path:`artifacts/selector-fix/after-${device}-${dimension.toLowerCase()}-${particle}.png`});
